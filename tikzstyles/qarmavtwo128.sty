@@ -1,0 +1,676 @@
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{qarmavtwo128}[2023/08/25 Utils for illustrating the QARMA-v2-128 cipher]
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Author: Hosein Hadipour
+% email: hsn.hadipour@gmail.com
+
+%%% PREREQUISITES %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\RequirePackage{amsmath,amssymb}
+\RequirePackage{tikz}
+\RequirePackage{xspace}
+\RequirePackage{tugcolors}
+\usetikzlibrary{calc,cipher}
+
+%%% GENERAL CRYPTO UTILS %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\providecommand{\cipher}[1]{\textsf{#1}}
+
+% TODO update step names to QARMA spec
+%\providecommand{\SB}{\cipher{SB}\xspace}
+%\providecommand{\SR}{\cipher{SR}\xspace}
+%\providecommand{\MC}{\cipher{MC}\xspace}
+%\providecommand{\AK}{\cipher{AK}\xspace}
+%\providecommand{\SC}{\cipher{SC}\xspace}
+%\providecommand{\AC}{\cipher{AC}\xspace}
+%\providecommand{\AT}{\cipher{ART}\xspace}
+%
+%\providecommand{\SubBytes}{\cipher{SubBytes}\xspace}
+%\providecommand{\ShiftRows}{\cipher{ShiftRows}\xspace}
+%\providecommand{\MixColumns}{\cipher{MixColumns}\xspace}
+%\providecommand{\AddRoundkey}{\cipher{AddRoundkey}\xspace}
+
+%%% COLORS %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\colorlet{nonzerofixed}{tugyellow}
+\colorlet{nonzeroany}{tugred}
+\colorlet{unknown}{tugblue}
+\colorlet{active}{cyan}
+\colorlet{lazy}{gray}
+\colorlet{filter}{yellow!80!red}
+\colorlet{fastfilter}{tugred}
+\colorlet{marcn}{tugred}
+\colorlet{marcf}{tugred}
+\colorlet{upperactive}{tugred}
+\colorlet{loweractive}{tugblue}
+
+%%% QARMA UTILS & OPTIONS %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% TODO update to QARMA family spec
+%\newcommand{\SKINNY}[1][]{\if\relax\detokenize{#1}\relax\cipher{SKINNY}\else\mbox{\cipher{SKINNY}-#1}\fi\xspace}
+
+\tikzset{
+  fillopts/.style={diff},
+  markopts/.style={marc,very thick},
+  cellopts/.style={font=\scriptsize},
+  >=latex
+}
+
+%%% STATE MARKING HELPER FUNCTIONS %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\providecommand{\TFill}[2][]{\fill[#1] (#2) ++(-.5,.5) -- +(0,-1) -- +(1,0) -- cycle;}
+\providecommand{\BFill}[2][]{\fill[#1] (#2) ++(.5,-.5) -- +(0,1) -- +(-1,0) -- cycle;}
+\providecommand{\PattCell}[2][black]{\draw[pattern color=#1,pattern=north east lines] (#2) ++(-.5,.5) rectangle +(1,-1);}
+\providecommand{\MarkCell}[2][marc]{\fill[#1] (#2) ++(-.5,.5) -- +(0,-.3) -- +(.7,-1) -- +(1,-1) -- +(1,-.7) -- +(.3,0) -- cycle;}
+\providecommand{\MarkCellN}[2][marcn]{\fill[#1] (#2) ++(-.5,.5) -- +(0,-.3) -- +(.7,-1) -- +(1,-1) -- +(1,-.7) -- +(.3,0) -- cycle;}
+\providecommand{\MarkCellF}[2][marcf]{\fill[transform canvas={rotate around={90:(#2)}},#1] (#2) ++(-.5,.5) -- +(0,-.3) -- +(.7,-1) -- +(1,-1) -- +(1,-.7) -- +(.3,0) -- cycle;}
+\providecommand{\FrameCell}[2][fillopts]{\draw[ultra thick, rounded corners=2pt][#1] (#2) ++(-.5,.5) rectangle +(1,-1);}
+
+
+\newcommand{\ZeroLegend}[1]{ \draw (init) +(0,-2.0+0.5) node[above right] {#1}; }
+\newcommand{\ZL}[2]{ \tikz[stateopts,baseline=(bot)]{#1 \draw (-.5,-.5) coordinate (bot) rectangle (.5,.5);} #2\quad }
+\newcommand{\ZLfill}[2]{ \ZL{\FillCell[#1]{0,0}}{#2} }
+
+\newcommand{\ZeroIDDistinguisherLegend}{
+  \ZeroLegend{\ZLfill{nonzerofixed}{fixed}
+              \ZLfill{nonzeroany}{nonzero}
+              \ZLfill{unknown}{any}}
+}
+
+\newcommand{\ZeroIDSTLegend}{
+  \ZeroLegend{\ZLfill{nonzeroany}{nonzero}
+              \ZLfill{unknown}{any}
+              \ZLfill{active}{involved in key-recovery}
+              \ZL{\PattCell{0,0}}{diff. value is needed}
+              \ZL{\MarkCellN{0,0}}{value is needed}}
+}
+
+
+\newcommand{\ZeroIDLegend}{
+  \ZeroLegend{\ZLfill{nonzerofixed}{fixed}
+              \ZLfill{nonzeroany}{nonzero}
+              \ZLfill{unknown}{any}
+              \ZLfill{active}{involved in key-recovery}
+              \ZL{\PattCell{0,0}}{diff. value is needed}
+              \ZL{\MarkCellN{0,0}}{value is needed}}
+}
+
+\newcommand{\ZeroZCLegend}{
+  \ZeroLegend{\ZLfill{nonzeroany}{nonzero}
+              \ZLfill{unknown}{any}
+              \ZLfill{active}{involved in key-recovery}}
+}
+
+\newcommand{\IntegralDistinguisherLegend}{
+  \ZeroLegend{\ZLfill{nonzerofixed}{fixed}
+              \ZLfill{nonzeroany}{nonzero}
+              \ZLfill{unknown}{any}
+              \ZL{\FrameCell[filter]{0,0}}{active tweak}}
+}
+
+\newcommand{\ZeroZILegend}{
+  \ZeroLegend{\ZLfill{active}{initial round}
+              \ZLfill{unknown}{any}
+              \ZLfill{nonzeroany}{nonzero}
+              \ZLfill{nonzerofixed}{integral}
+              \ZL{\TFill{0,0}}{key branch 1}
+              \ZL{\BFill{0,0}}{key branch 2}
+              \ZL{\FrameCell[filter]{0,0}}{active tweak}}
+}
+
+\newcommand{\IndexState}{%
+  \foreach \s in {0,...,15} {\Cell{s\s}{\s}}
+}
+
+\newcommand{\IndexStateTau}{%
+  \foreach \s/\t in {0/0,1/11,2/6,3/13,
+                     4/10,5/1,6/12,7/7,
+                     8/5,9/14,10/3,11/8,
+                     12/15,13/4,14/9,15/2}
+    {\Cell{s\s}{\t}}
+}
+
+%%% QARMA ROUND FUNCTIONS %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\newcommand{\QarmaInit}[2]{%
+  % #1 = initial state
+  \node[state] (here) {\MatrixState{#1}};
+  \coordinate (prev) at (here.east);
+
+  \coordinate (here1) at ($(here) + (0, -1.3)$);
+  \node[state] (here1) at (here1) {\MatrixState{#2}};
+  \coordinate (prev1) at (here1.east);
+}
+
+\newcommand{\QarmaRoundStacked}[8]{%
+  % #1 = first operation name (S or \tau')
+  % #2 = state after first operation (S)
+  % #3 = tweakey state
+  % #4 = state after tweakey addition
+  % #5 = second operation name (\tau or S')
+  % #6 = state after second operation (\tau)
+  % #7 = third operation name (M or M')
+  % #8 = state after third operation (M)
+  % First operation
+  \draw (here) ++(2,0) node[state] (here) {\MatrixState{#2}};
+  \draw[next] (prev) -- node[above] {#1} (here);
+  \coordinate (prev) at (here.east);
+
+  % Tweakey addition
+  \draw (here) ++(1,0) coordinate[xor] (xor);
+  \draw [next] (prev) -- (xor);
+  \draw (xor) ++(1,0) node[state] (tweakey) {\MatrixState{#3}};
+  \draw [next] (tweakey) -- (xor);
+  \draw (here) ++(-6,-3.5) node[state] (here) {\MatrixState{#4}};
+  \draw[next, rounded corners=2pt] (xor) -- ++(0,-1) -| (here);
+  \coordinate (prev) at (here.east);
+
+  % Second operation
+  \draw (here) ++(2,0) node[state] (here) {\MatrixState{#6}};
+  \draw[next] (prev) -- node[above] {#5} (here);
+  \draw (here.east) coordinate (prev);
+
+  % Third operation
+  \draw (here) ++(2,0) node[state] (here) {\MatrixState{#8}};
+  \draw[next] (prev) -- node[above] {#7} (here);
+  \draw (here.east) coordinate (prev);
+}
+
+\newcommand{\QarmaForwardNewLineInitZero}[8]{%
+  % #1 = first operation name (S or \tau')
+  % #2 = state after first operation (S)
+  % #3 = tweakey state
+  % #4 = state after tweakey addition
+  % #5 = second operation name (\tau or S')
+  % #6 = state after second operation (\tau)
+  % #7 = third operation name (M or M')
+  % #8 = state after third operation (M)
+
+  % First operation
+  \draw (here) ++(2,0) node[state] (here) {\MatrixState{#2}};
+  \draw[next] (prev) -- node[above] {#1} (here);
+  \coordinate (prev) at (here.east);
+
+  % Tweakey addition
+  \draw (here) ++(1,0) coordinate[xor] (xor);
+  \draw [next] (prev) -- (xor);
+  \draw (xor) ++(1.5,0) node[state] (tweakey) {\MatrixState{#3}};
+  \draw [next] (tweakey) -- (xor);
+  \draw (here) ++(-8,-3.5) node[state] (here) {\MatrixState{#4\IndexState}};
+  \draw[next, rounded corners=2pt] (xor) -- ++(0,-2.2) -| ($(here.west) + (-0.3, 1)$) |- (here.west);
+  \coordinate (prev) at (here.east);
+
+  % Second operation
+  \draw (here) ++(2,0) node[state] (here) {\MatrixState{#6\IndexStateTau}};
+  \draw[next] (prev) -- node[above] {#5} (here);
+  \draw (here.east) coordinate (prev);
+
+  % Third operation
+  \draw (here) ++(2,0) node[state] (here) {\MatrixState{#8}};
+  \draw[next] (prev) -- node[above] {#7} (here);
+  \draw (here.east) coordinate (prev);
+}
+
+% shift the same shape down
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\newcommand{\QarmaForwardNewLineInitOne}[8]{%
+
+  % #1 = first operation name (S or \tau')
+  % #2 = state after first operation (S)
+  % #3 = tweakey state
+  % #4 = state after tweakey addition
+  % #5 = second operation name (\tau or S')
+  % #6 = state after second operation (\tau)
+  % #7 = third operation name (M or M')
+  % #8 = state after third operation (M)
+
+  % First operation
+  \draw (here1) ++(2,0) node[state] (here1) {\MatrixState{#2}};
+  \draw[next] (prev1) -- node[above] {#1} (here1);
+  \coordinate (prev1) at (here1.east);
+
+  % Tweakey addition
+  \draw (here1) ++(1.5,0) coordinate[xor] (xor1);
+  \draw [next] (prev1) -- (xor1);
+  \draw (xor1) ++(1,0) node[state] (tweakey) {\MatrixState{#3}};
+  \draw [next] (tweakey) -- (xor1);
+  \draw (here1) ++(-8,-3.5) node[state] (here1) {\MatrixState{#4\IndexState}};
+  \draw[next, rounded corners=2pt] (xor1) -- ++(0,-1.2) -| ($(here1.west) + (-0.36, 1)$) |- (here1.west);
+  \coordinate (prev1) at (here1.east);
+
+  % Second operation
+  \draw (here1) ++(2,0) node[state] (here1) {\MatrixState{#6\IndexStateTau}};
+  \draw[next] (prev1) -- node[above] {#5} (here1);
+  \draw (here1.east) coordinate (prev1);
+
+  % Third operation
+  \draw (here1) ++(2,0) node[state] (here1) {\MatrixState{#8}};
+  \draw[next] (prev1) -- node[above] {#7} (here1);
+  \draw (here1.east) coordinate (prev1);
+}
+
+\newcommand{\QarmaForwardNewLineZero}[9]{%
+  % #1 = first operation name (S or \tau')
+  % #2 = state after first operation (S)
+  % #3 = tweakey state
+  % #4 = state after tweakey addition
+  % #5 = second operation name (\tau or S')
+  % #6 = state after second operation (\tau)
+  % #7 = third operation name (M or M')
+  % #8 = state after third operation (M)
+  % #9 = state after XR
+
+  % First operation
+  \draw (here) ++(2,0) node[state] (here) {\MatrixState{#2}};
+  \draw[next] (prev) -- node[above] {#1} (here);
+  \coordinate (inputExchangeRows) at (here.east);
+  \coordinate (prev) at (here.east);
+  
+
+  \draw (here) ++(2,0) node[state] (here) {\MatrixState{#9}};
+  \coordinate (outputExchangeRows) at (here.west);
+  \draw[next] (prev) -- node[above] {$\texttt{XR}$} (here);
+  \coordinate (prev) at (here.east);
+
+  % Tweakey addition
+  \draw (here) ++(1,0) coordinate[xor] (xor);
+  \draw [next] (prev) -- (xor);
+  \draw (xor) ++(1.5,0) node[state] (tweakey) {\MatrixState{#3}};
+  \draw [next] (tweakey) -- (xor);
+  \draw (here) ++(-8,-3.5) node[state] (here) {\MatrixState{#4\IndexState}};
+  \draw[next, rounded corners=2pt] (xor) -- ++(0,-2.2) -| ($(here.west) + (-0.3, 1)$) |- (here.west);
+  \coordinate (prev) at (here.east);
+
+  % Second operation
+  \draw (here) ++(2,0) node[state] (here) {\MatrixState{#6\IndexStateTau}};
+  \draw[next] (prev) -- node[above] {#5} (here);
+  \draw (here.east) coordinate (prev);
+
+  % Third operation
+  \draw (here) ++(2,0) node[state] (here) {\MatrixState{#8}};
+  \draw[next] (prev) -- node[above] {#7} (here);
+  \draw (here.east) coordinate (prev);
+}
+
+% shift the same shape down
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\newcommand{\QarmaForwardNewLineOne}[9]{%
+  % #1 = first operation name (S or \tau')
+  % #2 = state after first operation (S)
+  % #3 = tweakey state
+  % #4 = state after tweakey addition
+  % #5 = second operation name (\tau or S')
+  % #6 = state after second operation (\tau)
+  % #7 = third operation name (M or M')
+  % #8 = state after third operation (M)
+  % #9 = state after XR
+
+  % First operation
+
+  \draw (here1) ++(2,0) node[state] (here1) {\MatrixState{#2}};
+  \draw[next] (prev1) -- node[above] {#1} (here1);
+  \coordinate (prev1) at (here1.east);
+
+  \draw (here1) ++(2,0) node[state] (here1) {\MatrixState{#9}};
+  \draw[next] (prev1) -- (here1);
+  \draw[next] (inputExchangeRows) -- (here1.west);
+  \draw[next] (prev1) -- (outputExchangeRows);
+  \coordinate (prev1) at (here1.east);
+
+  % Tweakey addition
+  \draw (here1) ++(1.5,0) coordinate[xor] (xor1);
+  \draw [next] (prev1) -- (xor1);
+  \draw (xor1) ++(1,0) node[state] (tweakey) {\MatrixState{#3}};
+  \draw [next] (tweakey) -- (xor1);
+  \draw (here1) ++(-8,-3.5) node[state] (here1) {\MatrixState{#4\IndexState}};
+  \draw[next, rounded corners=2pt] (xor1) -- ++(0,-1.2) -| ($(here1.west) + (-0.36, 1)$) |- (here1.west);
+  \coordinate (prev1) at (here1.east);
+
+  % Second operation
+  \draw (here1) ++(2,0) node[state] (here1) {\MatrixState{#6\IndexStateTau}};
+  \draw[next] (prev1) -- node[above] {#5} (here1);
+  \draw (here1.east) coordinate (prev1);
+
+  % Third operation
+  \draw (here1) ++(2,0) node[state] (here1) {\MatrixState{#8}};
+  \draw[next] (prev1) -- node[above] {#7} (here1);
+  \draw (here1.east) coordinate (prev1);
+}
+
+\newcommand{\QarmaForwardFinalZero}[9]{%
+  % #1 = first operation name (S or \tau')
+  % #2 = state after first operation (S)
+  % #3 = tweakey state
+  % #4 = state after tweakey addition
+  % #5 = second operation name (\tau or S')
+  % #6 = state after second operation (\tau)
+  % #7 = third operation name (M or M')
+  % #8 = state after third operation (M)
+  % #9 = state after XR
+  
+  % First operation
+  \draw (here) ++(2,0) node[state] (here) {\MatrixState{#2}};
+  \draw[next] (prev) -- node[above] {#1} (here);
+  \coordinate (inputExchangeRows) at (here.east);
+  \coordinate (prev) at (here.east);
+
+  \draw (here) ++(2,0) node[state] (here) {\MatrixState{#9}};
+  \coordinate (outputExchangeRows) at (here.west);
+  \draw[next] (prev) -- node[above] {$\texttt{XR}$} (here);
+  \coordinate (prev) at (here.east);
+
+  % Tweakey addition
+  \draw (here) ++(1,0) coordinate[xor] (xor);
+  \draw [next] (prev) -- (xor);
+  \draw (xor) ++(1.5,0) node[state] (tweakey) {\MatrixState{#3}};
+  \draw [next] (tweakey) -- (xor);
+  \draw (here) ++(-8,-3.5) node[state] (here) {\MatrixState{#4\IndexState}};
+  \draw[next, rounded corners=2pt] (xor) -- ++(0,-2.2) -| ($(here.west) + (-0.3, 1)$) |- (here.west);
+  \coordinate (prev) at (here.east);
+
+  % Second operation
+  \draw (here) ++(2,0) node[state] (here) {\MatrixState{#6\IndexStateTau}};
+  \draw[next] (prev) -- node[above] {#5} (here);
+  \draw (here.east) coordinate (prev);
+
+  % Third operation
+  \draw (here) ++(2,0) node[state] (here) {\MatrixState{#8}};
+  \draw[next] (prev) -- node[above] {#7} (here);
+  \draw (here.east) coordinate (prev);
+
+  % Central Tweak-less part
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+  \draw (here) ++(2,0) node[state] (here) {\MatrixState{}};
+  \draw[next] (prev) -- node[above] {$S$} (here);
+  \coordinate (inputExchangeRowsCenteral) at (here.east);
+  \draw (here.east) coordinate (prev);
+
+  \draw (here) ++(2,0) node[state] (here) {\MatrixState{}};
+  \draw[next] (prev) -- node[above] {$\texttt{XR}$} (here);
+  \coordinate (outputExchangeRowsCentral) at (here.west);
+  \draw (here.east) coordinate (prev);
+
+  \draw (here) ++(1,0) coordinate (xor);
+  % \draw [next] (prev) -- (xor);
+  % \draw (xor) ++(1,0) node[state] (tweakey) {\MatrixState{}};  
+  \draw (here) ++(-6,-3.5) node[state] (here) {\MatrixState{}};
+  \draw[next, rounded corners=2pt] (prev) -- (xor) -- ++(0,-2.2) -| ($(here.west) + (-0.3, 1)$) |- (here.west);
+  \coordinate (prev) at (here.east);
+
+  \draw (here) ++(2,0) node[state] (here) {\MatrixState{}};
+  \draw[next] (prev) -- node[above] {$\tau$} (here);
+  \draw (here.east) coordinate (prev);
+
+  \draw (here) ++(2,0) node[state] (here) {\MatrixState{}};
+  \draw[next] (prev) -- node[above] {$M$} (here);
+  \draw (here.east) coordinate (prev);
+
+  \draw (here) ++(2,0) node[state] (here) {\MatrixState{}};
+  \draw[next] (prev) -- node[above] {$\bar{\tau}$} (here);
+  \draw (here.east) coordinate (prev);
+
+  \draw (here) ++(1,0) coordinate (xor);
+  \draw (here) ++(-8,-3.5) node[state] (here) {\MatrixState{}};
+  \draw[next, rounded corners=2pt] (prev) -- (xor) -- ++(0,-2.2) -| ($(here.west) + (-0.25, 1)$) |- (here.west);
+  \coordinate (inputExchangeRowsBackward) at (here.east);
+  \coordinate (prev) at (here.east);
+  
+  \draw (here) ++(2,0) node[state] (here) {\MatrixState{}};
+  \coordinate (outputExchangeRowsBackward) at (here.west);
+  \draw[next] (prev) -- node[above] {$\texttt{XR}$} (here);
+  \draw (here.east) coordinate (prev);
+}
+
+% shift the same shape down
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\newcommand{\QarmaForwardFinalOne}[9]{%
+  % #1 = first operation name (S or \tau')
+  % #2 = state after first operation (S)
+  % #3 = tweakey state
+  % #4 = state after tweakey addition
+  % #5 = second operation name (\tau or S')
+  % #6 = state after second operation (\tau)
+  % #7 = third operation name (M or M')
+  % #8 = state after third operation (M)
+  % #9 = state after XR
+
+  % First operation  
+  \draw (here1) ++(2,0) node[state] (here1) {\MatrixState{#2}};
+  \draw[next] (prev1) -- node[above] {#1} (here1);
+  \coordinate (prev1) at (here1.east);
+
+  \draw (here1) ++(2,0) node[state] (here1) {\MatrixState{#9}};
+  \draw[next] (prev1) -- (here1);
+  \draw[next] (inputExchangeRows) -- (here1.west);
+  \draw[next] (prev1) -- (outputExchangeRows);
+  \coordinate (prev1) at (here1.east);
+  
+  % Tweakey addition
+  \draw (here1) ++(1.5,0) coordinate[xor] (xor1);
+  \draw [next] (prev1) -- (xor1);
+  \draw (xor1) ++(1,0) node[state] (tweakey) {\MatrixState{#3}};
+  \draw [next] (tweakey) -- (xor1);
+  \draw (here1) ++(-8,-3.5) node[state] (here1) {\MatrixState{#4\IndexState}};
+  \draw[next, rounded corners=2pt] (xor1) -- ++(0,-1.2) -| ($(here1.west) + (-0.36, 1)$) |- (here1.west);
+  \coordinate (prev1) at (here1.east);
+
+  % Second operation
+  \draw (here1) ++(2,0) node[state] (here1) {\MatrixState{#6\IndexStateTau}};
+  \draw[next] (prev1) -- node[above] {#5} (here1);
+  \draw (here1.east) coordinate (prev1);
+
+  % Third operation
+  \draw (here1) ++(2,0) node[state] (here1) {\MatrixState{#8}};
+  \draw[next] (prev1) -- node[above] {#7} (here1);
+  \draw (here1.east) coordinate (prev1);
+
+  % Central Tweak-less part
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+  \draw (here1) ++(2,0) node[state] (here1) {\MatrixState{}};
+  \draw[next] (prev1) -- node[above] {$S$} (here1);
+  \draw (here1.east) coordinate (prev1);
+
+  \draw (here1) ++(2,0) node[state] (here1) {\MatrixState{}};
+  \draw[next] (prev1) -- (here1);
+  \draw[next] (inputExchangeRowsCenteral) -- (here1.west);
+  \draw[next] (prev1) -- (outputExchangeRowsCentral);
+  \draw (here1.east) coordinate (prev1);
+
+  \draw (here1) ++(1.5,0) coordinate (xor1);
+  % \draw [next] (prev1) -- (xor);
+  % \draw (xor) ++(1,0) node[state] (tweakey) {\MatrixState{}};  
+  \draw (here1) ++(-6,-3.5) node[state] (here1) {\MatrixState{}};
+  \draw[next, rounded corners=2pt] (prev1) -- (xor1) -- ++(0,-1.2) -| ($(here1.west) + (-0.8, 1)$) |- (here1.west);
+  \coordinate (prev1) at (here1.east);
+
+  \draw (here1) ++(2,0) node[state] (here1) {\MatrixState{}};
+  \draw[next] (prev1) -- node[above] {$\tau$} (here1);
+  \draw (here1.east) coordinate (prev1);
+
+  \draw (here1) ++(2,0) node[state] (here1) {\MatrixState{}};
+  \draw[next] (prev1) -- node[above] {$M$} (here1);
+  \draw (here1.east) coordinate (prev1);
+
+  \draw (here1) ++(2,0) node[state] (here1) {\MatrixState{}};
+  \draw[next] (prev1) -- node[above] {$\bar{\tau}$} (here1);
+  \draw (here1.east) coordinate (prev1);
+
+  \draw (here1) ++(1.5,0) coordinate (xor1);
+  \draw (here1) ++(-8,-3.5) node[state] (here1) {\MatrixState{}};
+  \draw[next, rounded corners=2pt] (prev1) -- (xor1) -- ++(0,-1.2) -| ($(here1.west) + (-0.36, 1)$) |- (here1.west);
+  \coordinate (prev1) at (here1.east);
+
+  \draw (here1) ++(2,0) node[state] (here1) {\MatrixState{}};
+  \draw[next] (inputExchangeRowsBackward) -- (here1.west);
+  \draw[next] (prev1) -- (outputExchangeRowsBackward);
+  \draw[next] (prev1) -- (here1);
+  \draw (here1.east) coordinate (prev1);
+}
+
+\newcommand{\QarmaBackwardNewLineZero}[9]{%
+  % #1 = S^-1
+  % #2 = state after S^-1
+  % #3 = M^-1
+  % #4 = state after M^-1
+  % #5 = tau^-1
+  % #6 = state after tau^-1
+  % #7 = sub-tweakey state
+  % #8 = state before XR
+  % #9 = state after XR
+
+  \draw (here) ++(2,0) node[state] (here) {\MatrixState{#2}};
+  \draw[next] (prev) -- node[above] {#1} (here);
+  \coordinate (prev) at (here.east);
+  
+  % First operation
+  \draw (here) ++(2,0) node[state] (here) {\MatrixState{#4\IndexStateTau}};
+  \draw[next] (prev) -- node[above] {#3} (here);
+  \coordinate (prev) at (here.east);
+
+  \draw (here) ++(2,0) node[state] (here) {\MatrixState{#6\IndexState}};
+  \draw[next] (prev) -- node[above] {#5} (here);
+  \coordinate (prev) at (here.east);
+
+  % Tweakey addition
+  \draw (here) ++(1,0) coordinate[xor] (xor);
+  \draw [next] (prev) -- (xor);
+  \draw (xor) ++(1.5,0) node[state] (tweakey) {\MatrixState{#7}};
+  \draw [next] (tweakey) -- (xor);
+  \draw (here) ++(-8,-3.5) node[state] (here) {\MatrixState{#8}};
+  \draw[next, rounded corners=2pt] (xor) -- ++(0,-2.2) -| ($(here.west) + (-0.3, 1)$) |- (here.west);
+  \coordinate (inputExchangeRowsBackward) at (here.east);
+  \coordinate (prev) at (here.east);
+
+  % Second operation
+  \draw (here) ++(2,0) node[state] (here) {\MatrixState{#9}};
+  \draw[next] (prev) -- node[above] {$\texttt{XR}$} (here);
+  \coordinate (outputExchangeRowsBackward) at (here.west);
+  \draw (here.east) coordinate (prev);
+}
+
+\newcommand{\QarmaBackwardNewLineOne}[9]{%
+  % #1 = S^-1
+  % #2 = state after S^-1
+  % #3 = M^-1
+  % #4 = state after M^-1
+  % #5 = tau^-1
+  % #6 = state after tau^-1
+  % #7 = sub-tweakey state
+  % #8 = state before XR
+  % #9 = state after XR
+
+  \draw (here1) ++(2,0) node[state] (here1) {\MatrixState{#2}};
+  \draw[next] (prev1) -- node[above] {#1} (here1);
+  \coordinate (prev1) at (here1.east);
+  
+  % First operation
+  \draw (here1) ++(2,0) node[state] (here1) {\MatrixState{#4\IndexStateTau}};
+  \draw[next] (prev1) -- node[above] {#3} (here1);
+  \coordinate (prev1) at (here1.east);
+
+  \draw (here1) ++(2,0) node[state] (here1) {\MatrixState{#6\IndexState}};
+  \draw[next] (prev1) -- node[above] {#5} (here1);
+  \coordinate (prev1) at (here1.east);
+
+  % Tweakey addition
+  \draw (here1) ++(1.5,0) coordinate[xor] (xor1);
+  \draw [next] (prev1) -- (xor1);
+  \draw (xor1) ++(1,0) node[state] (tweakey) {\MatrixState{#7}};
+  \draw [next] (tweakey) -- (xor1);
+  \draw (here1) ++(-8,-3.5) node[state] (here1) {\MatrixState{#8}};
+  \draw[next, rounded corners=2pt] (prev1) -- (xor1) -- ++(0,-1.2) -| ($(here1.west) + (-0.36, 1)$) |- (here1.west);
+  \coordinate (inputExchangeRowsCenteral) at (here1.east);
+  \coordinate (prev1) at (here1.east);
+
+  % Second operation
+  \draw (here1) ++(2,0) node[state] (here1) {\MatrixState{#9}};
+  \draw[next] (inputExchangeRowsBackward) -- (here1.west);
+  \draw[next] (prev1) -- (outputExchangeRowsBackward);
+  \draw[next] (prev1) -- (here1);  
+  \draw (here1.east) coordinate (prev1);
+}
+
+\newcommand{\QarmaBackwardFinalZero}[9]{%
+  % #1 = S^-1
+  % #2 = state after S^-1
+  % #3 = M^-1
+  % #4 = state after M^-1
+  % #5 = tau^-1
+  % #6 = state after tau^-1
+  % #7 = sub-tweakey state
+  % #8 = state before XR
+  % #9 = state after S^-1
+
+  \draw (here) ++(2,0) node[state] (here) {\MatrixState{#2}};
+  \draw[next] (prev) -- node[above] {#1} (here);
+  \coordinate (prev) at (here.east);
+  
+  % First operation
+  \draw (here) ++(2,0) node[state] (here) {\MatrixState{#4\IndexStateTau}};
+  \draw[next] (prev) -- node[above] {#3} (here);
+  \coordinate (prev) at (here.east);
+
+  \draw (here) ++(2,0) node[state] (here) {\MatrixState{#6\IndexState}};
+  \draw[next] (prev) -- node[above] {#5} (here);
+  \coordinate (prev) at (here.east);
+
+  % Tweakey addition
+  \draw (here) ++(1,0) coordinate[xor] (xor);
+  \draw [next] (prev) -- (xor);
+  \draw (xor) ++(1.5,0) node[state] (tweakey) {\MatrixState{#7}};
+  \draw [next] (tweakey) -- (xor);
+  \draw (here) ++(-8,-3.5) node[state] (here) {\MatrixState{#8}};
+  \draw[next, rounded corners=2pt] (xor) -- ++(0,-2.2) -| ($(here.west) + (-0.3, 1)$) |- (here.west);
+  \coordinate (prev) at (here.east);
+
+  % Second operation
+  \draw (here) ++(2,0) node[state] (here) {\MatrixState{#9}};
+  \draw[next] (prev) -- node[above] {$\bar{S}$} (here);
+  \coordinate (outputExchangeRowsBackward) at (here.west);
+  \draw (here.east) coordinate (prev);
+}
+
+\newcommand{\QarmaBackwardFinalOne}[9]{%
+  % #1 = S^-1
+  % #2 = state after S^-1
+  % #3 = M^-1
+  % #4 = state after M^-1
+  % #5 = tau^-1
+  % #6 = state after tau^-1
+  % #7 = sub-tweakey state
+  % #8 = state before XR
+  % #9 = state after S^-1
+
+  \draw (here1) ++(2,0) node[state] (here1) {\MatrixState{#2}};
+  \draw[next] (prev1) -- node[above] {#1} (here1);
+  \coordinate (prev1) at (here1.east);
+  
+  % First operation
+  \draw (here1) ++(2,0) node[state] (here1) {\MatrixState{#4\IndexStateTau}};
+  \draw[next] (prev1) -- node[above] {#3} (here1);
+  \coordinate (prev1) at (here1.east);
+
+  \draw (here1) ++(2,0) node[state] (here1) {\MatrixState{#6\IndexState}};
+  \draw[next] (prev1) -- node[above] {#5} (here1);
+  \coordinate (prev1) at (here1.east);
+
+  % Tweakey addition
+  \draw (here1) ++(1.5,0) coordinate[xor] (xor1);
+  \draw [next] (prev1) -- (xor1);
+  \draw (xor1) ++(1,0) node[state] (tweakey) {\MatrixState{#7}};
+  \draw [next] (tweakey) -- (xor1);
+  \draw (here1) ++(-8,-3.5) node[state] (here1) {\MatrixState{#8}};
+  \draw[next, rounded corners=2pt] (prev1) -- (xor1) -- ++(0,-1.2) -| ($(here1.west) + (-0.36, 1)$) |- (here1.west);
+  \coordinate (prev1) at (here1.east);
+
+  % Second operation
+  \draw (here1) ++(2,0) node[state] (here1) {\MatrixState{#9}};
+  \draw[next] (prev1) -- node[above] {$\bar{S}$} (here1);  
+  \draw (here1.east) coordinate (prev1);
+}
+\endinput
