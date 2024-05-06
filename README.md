@@ -190,7 +190,7 @@ We present this work in [FSE 2024](https://fse.iacr.org/2024/):
 - [Video](https://youtu.be/ik-jy0r2NHA?t=1407)
 - [Slides](https://iacr.org/submit/files/slides/2024/fse/fse2024/2024_1_42/slides.pdf)
 - [Latex Sources of Our Slides](https://github.com/hadipourh/talks/tree/main/20240328-FSE-2024)
-- [Full Version of Paper](https://ia.cr/2023/1701)
+- [Full Version of Paper](https://ia.cr/2023/1833)
 
 If you have any questions or comments, please feel free to open an issue in this repository or reach out to [Hosein Hadipour](mailto:hsn.hadipour@gmail.com) directly.
 
@@ -208,18 +208,18 @@ Therefore, it is essential to thoroughly review and validate any output of the t
 If you use our tool in your work, please acknowledge it by citing our paper:
 
 ```
-@article{zeroplus_hadipouretal_tosc_2024,
-author = {Hosein Hadipour and 
-          Simon Gerhalter and 
-          Sadegh Sadeghi and 
-          Maria Eichlseder},
-  title = {Improved Search for Integral, Impossible-Differential and Zero-Correlation Attacks: Application to {Ascon}, {ForkSKINNY}, {SKINNY}, {MANTIS}, {PRESENT} and {QARMAv2}},
+@article{DBLP:journals/tosc/HadipourT24,
+  author       = {Hosein Hadipour and
+                  Yosuke Todo},
+  title        = {Cryptanalysis of QARMAv2},
   journal      = {{IACR} Trans. Symmetric Cryptol.},
   volume       = {2024},
   number       = {1},
+  pages        = {188--213},
   year         = {2024},
-  pages        = {234-325}
-  doi          = {10.46586/tosc.v2024.i1.234-325}
+  url          = {https://doi.org/10.46586/tosc.v2024.i1.188-213},
+  doi          = {10.46586/TOSC.V2024.I1.188-213},
+  timestamp    = {Tue, 26 Mar 2024 13:06:22 +0100}
 }
 ```
 ---
