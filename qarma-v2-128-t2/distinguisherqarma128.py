@@ -57,8 +57,8 @@ class IntegralDistinguisher:
                                      'picat', 'scip', 'choco', 'ortools']
         ##################################################
         # Use this block if you install Or-Tools bundeled with MiniZinc
-        # if self.cp_solver_name == "ortools":
-        #     self.cp_solver_name = "com.google.ortools.sat"
+        if self.cp_solver_name == "ortools":
+            self.cp_solver_name = "com.google.ortools.sat"
         ################################################## 
         assert(self.cp_solver_name in self.supported_cp_solvers)
         self.cp_solver = minizinc.Solver.lookup(self.cp_solver_name)
