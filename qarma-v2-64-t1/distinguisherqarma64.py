@@ -58,8 +58,8 @@ class IntegralDistinguisher:
         assert(self.cp_solver_name in self.supported_cp_solvers)
         ##################################################
         # Use this block if you install Or-Tools bundeled with MiniZinc
-        if self.cp_solver_name == "ortools":
-           self.cp_solver_name = "com.google.ortools.sat"
+        # if self.cp_solver_name == "ortools":
+        #    self.cp_solver_name = "com.google.ortools.sat"
         ################################################## 
         self.cp_solver = minizinc.Solver.lookup(self.cp_solver_name)
         self.mzn_file_name = "distinguisherqarma64.mzn"
